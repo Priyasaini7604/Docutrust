@@ -1,0 +1,15 @@
+# Environment variables - NEVER commit
+backend/.env
+
+# Python
+backend/venv/
+backend/__pycache__/
+backend/*.pyc
+backend/chroma_db/
+
+# Node
+frontend/node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
