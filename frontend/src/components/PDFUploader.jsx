@@ -36,7 +36,7 @@ function PDFUploader({ uploadedFile, setUploadedFile }) {
           // Empty state
           <div className="upload-empty">
             <Upload size={40} color="#4f8ef7" />
-            <p className="upload-title">Drop PDF here</p>
+            <p className="upload-title">Drop TextPDF/slidebasedPDF here</p>
             <p className="upload-hint">or click to browse</p>
           </div>
         )}
