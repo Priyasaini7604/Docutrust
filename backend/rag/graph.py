@@ -96,7 +96,6 @@ def generate_node(state: GraphState) -> GraphState:
     """Generate final answer with citations."""
     docs = state["documents"]
 
-    # Build context with page citations
     context = ""
     citations = []
     for i, doc in enumerate(docs):
@@ -110,18 +109,18 @@ def generate_node(state: GraphState) -> GraphState:
         })
 
     prompt = ChatPromptTemplate.from_messages([
-    ("system", """You are a precise document assistant.
+        ("system", """You are a precise document assistant.
     Answer using ONLY the provided context below.
     If the exact answer is in the context, state it directly and confidently.
     If you're not fully certain, say what the context suggests.
     Keep the answer to one short sentence."""),
-    ("human", """Context:
+        ("human", """Context:
     {context}
-    
+
     Question: {question}
-    
+
     Answer:""")
-])
+    ])
 
     chain = prompt | llm | StrOutputParser()
     answer = chain.invoke({
@@ -151,14 +150,12 @@ def should_web_search(state: GraphState) -> str:
 def build_graph():
     graph = StateGraph(GraphState)
 
-    # Add nodes
     graph.add_node("retrieve", retrieve_node)
     graph.add_node("grade", grade_node)
     graph.add_node("rewrite", rewrite_node)
     graph.add_node("web_search", web_search_node)
     graph.add_node("generate", generate_node)
 
-    # Add edges
     graph.set_entry_point("retrieve")
     graph.add_edge("retrieve", "grade")
     graph.add_conditional_edges(
@@ -176,8 +173,14 @@ def build_graph():
     return graph.compile()
 
 
-# Compiled graph instance
-crag_graph = build_graph()
+# ===== LAZY LOADING =====
+_crag_graph = None
+
+def get_graph():
+    global _crag_graph
+    if _crag_graph is None:
+        _crag_graph = build_graph()
+    return _crag_graph
 
 
 def run_crag(question: str) -> dict:
@@ -193,7 +196,7 @@ def run_crag(question: str) -> dict:
         "steps": []
     }
 
-    final_state = crag_graph.invoke(initial_state)
+    final_state = get_graph().invoke(initial_state)
 
     return {
         "answer": final_state["answer"],
