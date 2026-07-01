@@ -1,14 +1,17 @@
-# Environment variables - NEVER commit
-backend/.env
-
 # Python
+**/__pycache__/
+*.pyc
+*.pyo
 backend/venv/
-backend/__pycache__/
-backend/*.pyc
-backend/chroma_db/
 
 # Node
 frontend/node_modules/
+
+# Environment
+backend/.env
+
+# ChromaDB
+backend/chroma_db/
 
 # OS
 .DS_Store
