@@ -13,6 +13,12 @@ embeddings = HuggingFaceEmbeddings(
 CHROMA_PATH = "./chroma_db"
 
 def ingest_pdf(file_bytes: bytes, filename: str) -> dict:
+    import chromadb
+    client = chromadb.PersistentClient(path=CHROMA_PATH)
+    try:
+        client.delete_collection("docutrust")
+    except:
+        pass
     # Step 1: PDF ko temp file mein save karo
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
         tmp.write(file_bytes)
@@ -25,8 +31,8 @@ def ingest_pdf(file_bytes: bytes, filename: str) -> dict:
 
         # Step 3: Chunks mein todo
         splitter = RecursiveCharacterTextSplitter(
-            chunk_size=500,
-            chunk_overlap=50,
+            chunk_size=350,
+            chunk_overlap=80,
         )
         chunks = splitter.split_documents(pages)
 

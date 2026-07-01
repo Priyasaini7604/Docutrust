@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, AlertCircle } from "lucide-react";
+import { askQuestion, uploadPDF } from "../services/api";
 
 function ChatPanel({ messages, setMessages, setAgentLogs, setIsProcessing, uploadedFile }) {
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
+  const [uploaded, setUploaded] = useState(false);
   const bottomRef = useRef(null);
 
   // Auto scroll to bottom
@@ -11,12 +13,25 @@ function ChatPanel({ messages, setMessages, setAgentLogs, setIsProcessing, uploa
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!question.trim()) return;
-    if (!uploadedFile) {
-      alert("Pehle PDF upload karo!");
-      return;
+  // Upload PDF when file changes
+  useEffect(() => {
+    if (uploadedFile) {
+      handleUpload();
     }
+  }, [uploadedFile]);
+
+  const handleUpload = async () => {
+    try {
+      await uploadPDF(uploadedFile);
+      setUploaded(true);
+    } catch (error) {
+      console.error("Upload failed:", error);
+      setUploaded(false);
+    }
+  };
+
+  const handleSend = async () => {
+    if (!question.trim() || !uploaded) return;
 
     const userMessage = { role: "user", content: question };
     setMessages((prev) => [...prev, userMessage]);
@@ -25,32 +40,34 @@ function ChatPanel({ messages, setMessages, setAgentLogs, setIsProcessing, uploa
     setIsProcessing(true);
     setAgentLogs([]);
 
-    // Dummy agent logs for now (backend se aayenge baad mein)
-    const dummyLogs = [
-      { type: "retrieve", step: "Retrieving chunks", message: "Searching relevant document sections...", time: now() },
-      { type: "grade", step: "Grading relevance", message: "Checking if chunks are relevant to query...", time: now() },
-      { type: "generate", step: "Generating answer", message: "Producing final answer with citations...", time: now() },
-    ];
+    try {
+      const result = await askQuestion(question);
 
-    // Simulate step by step logs
-    for (let i = 0; i < dummyLogs.length; i++) {
-      await delay(1000);
-      setAgentLogs((prev) => [...prev, dummyLogs[i]]);
+      // Set agent logs from backend
+      setAgentLogs(result.steps.map((step) => ({
+        ...step,
+        time: new Date().toLocaleTimeString(),
+      })));
+
+      // Set AI response
+      const aiMessage = {
+        role: "assistant",
+        content: result.answer,
+        citations: result.citations,
+      };
+      setMessages((prev) => [...prev, aiMessage]);
+
+    } catch (error) {
+      const errorMessage = {
+        role: "assistant",
+        content: "Something went wrong. Please try again!",
+        citations: [],
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setLoading(false);
+      setIsProcessing(false);
     }
-
-    // Dummy answer
-    await delay(1000);
-    const aiMessage = {
-      role: "assistant",
-      content: "This is a dummy answer. Backend connect hone ke baad real answer aayega!",
-      citations: [
-        { page: 2, text: "Relevant section from your document will appear here." },
-      ],
-    };
-
-    setMessages((prev) => [...prev, aiMessage]);
-    setLoading(false);
-    setIsProcessing(false);
   };
 
   const handleKeyDown = (e) => {
@@ -68,36 +85,23 @@ function ChatPanel({ messages, setMessages, setAgentLogs, setIsProcessing, uploa
           <div className="chat-empty">
             <span className="chat-empty-icon">💬</span>
             <p>Ask anything about your document</p>
-            <p className="chat-empty-hint">Upload a PDF first, then type your question</p>
+            <p className="chat-empty-hint">
+              {uploaded ? "PDF ready! Ask your question." : "Upload a PDF first"}
+            </p>
           </div>
         )}
 
         {messages.map((msg, index) => (
           <div key={index} className={`message message-${msg.role}`}>
-            {/* Label */}
             <span className="message-label">
               {msg.role === "user" ? "🧑 You" : "🤖 DocuTrust"}
             </span>
-
-            {/* Content */}
             <p className="message-content">{msg.content}</p>
 
-            {/* Citations */}
-            {msg.citations && msg.citations.length > 0 && (
-              <div className="citations">
-                {msg.citations.map((cite, i) => (
-                  <div key={i} className="citation-item">
-                    <AlertCircle size={12} color="#4f8ef7" />
-                    <span className="citation-page">Page {cite.page}:</span>
-                    <span className="citation-text">{cite.text}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+            
           </div>
         ))}
 
-        {/* Loading bubble */}
         {loading && (
           <div className="message message-assistant">
             <span className="message-label">🤖 DocuTrust</span>
@@ -114,6 +118,9 @@ function ChatPanel({ messages, setMessages, setAgentLogs, setIsProcessing, uploa
 
       {/* Input Area */}
       <div className="chat-input-area">
+        {!uploaded && uploadedFile && (
+          <p className="chat-warning">⏳ Uploading PDF to backend...</p>
+        )}
         {!uploadedFile && (
           <p className="chat-warning">⚠️ Upload a PDF to start asking questions</p>
         )}
@@ -125,12 +132,12 @@ function ChatPanel({ messages, setMessages, setAgentLogs, setIsProcessing, uploa
             onChange={(e) => setQuestion(e.target.value)}
             onKeyDown={handleKeyDown}
             rows={2}
-            disabled={loading || !uploadedFile}
+            disabled={loading}
           />
           <button
             className="chat-send-btn"
             onClick={handleSend}
-            disabled={loading || !uploadedFile || !question.trim()}
+            disabled={loading ||!question.trim()}
           >
             <Send size={18} />
           </button>
@@ -139,9 +146,5 @@ function ChatPanel({ messages, setMessages, setAgentLogs, setIsProcessing, uploa
     </div>
   );
 }
-
-// Helper functions
-const delay = (ms) => new Promise((res) => setTimeout(res, ms));
-const now = () => new Date().toLocaleTimeString();
 
 export default ChatPanel;
