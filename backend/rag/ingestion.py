@@ -1,20 +1,20 @@
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
 import tempfile
 import os
 
 CHROMA_PATH = "./chroma_db"
 
-# Lazy loading — startup pe load nahi hoga
+# Lazy loading
 _embeddings = None
 
 def get_embeddings():
     global _embeddings
     if _embeddings is None:
-        _embeddings = HuggingFaceEmbeddings(
-            model_name="all-MiniLM-L6-v2"
+        from langchain_community.embeddings import FastEmbedEmbeddings
+        _embeddings = FastEmbedEmbeddings(
+            model_name="BAAI/bge-small-en-v1.5"  # lightest, ~50MB
         )
     return _embeddings
 
@@ -43,7 +43,7 @@ def ingest_pdf(file_bytes: bytes, filename: str) -> dict:
 
         vectorstore = Chroma.from_documents(
             documents=chunks,
-            embedding=get_embeddings(),   # ← lazy call
+            embedding=get_embeddings(),
             persist_directory=CHROMA_PATH,
             collection_name="docutrust",
         )
@@ -62,6 +62,6 @@ def ingest_pdf(file_bytes: bytes, filename: str) -> dict:
 def get_vectorstore():
     return Chroma(
         persist_directory=CHROMA_PATH,
-        embedding_function=get_embeddings(),   # ← lazy call
+        embedding_function=get_embeddings(),
         collection_name="docutrust",
     )

@@ -1,4 +1,4 @@
-uvicorn
+uvicorn[standard]
 fastapi
 python-multipart
 python-dotenv
@@ -6,12 +6,11 @@ pymongo
 langchain
 langchain-community
 langchain-chroma
-langchain-huggingface
 langchain-groq
 langchain-text-splitters
 langgraph
 chromadb
-sentence-transformers
 pypdf
 tavily-python
 langchain-tavily
+fastembed
